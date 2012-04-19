@@ -107,30 +107,11 @@ Once an object of class "ANN" has been created, you can \code{print()} and \code
 %% ~~objects to See Also as \code{\link{help}}, ~~~
 %}
 \examples{
-require(ANN)
-set.seed(123)
-t               <-seq(0, 2 * pi, 0.01)
-output1         <-matrix( sin(t) )
-output2         <-matrix( sin(t) + 0.5 * rnorm( length(t) ) )
-
-fctLogistic <-  function(input) 
-{
-        input   <-as.vector(input)
-        logit   <- 1/(1 + exp( -input ))
-        return(logit)
-} 
-
-output          <-matrix( fctLogistic(output2) )
-input           <-matrix( seq( 0, 1, length.out=length(t) ) )
-par( mfrow=c(2,2) )
-                plot(output1, main="sin")
-                plot(output2, main="sin + 0.5 * rnorm")
-                plot(output, main="sin + 0.5 * rnorm in [0,1]")
-                plot(input, main="input should be in the range [0,1]")
 
 
+#use the command demo(ANN) to see how dataANN was created 
+data("dataANN")
 
-#set.seed(123)
 #Example
 	        ANNGA(x    =input,
                 y       =output,
@@ -138,25 +119,12 @@ par( mfrow=c(2,2) )
                 population  =100,
                 mutation = 0.3,
                 crossover = 0.7,
-                maxGen  =100,
+                maxGen  =1000,
                 error   =0.001)
 
 
-#for detail use 
-#demo(ANN)
-
-data("dataANN")
-demoResultANN
-par( mfrow=c(2,2) )
-plot(demoResultANN[[1]])
-title(sub="10 generations")
-
-plot(demoResultANN[[2]])
-title(sub="100 generations")
-
-plot(demoResultANN[[3]])
-title(sub="1000 generations")
-
+#More examples 
+demo(ANN)
 }
 \keyword{ neural }
 \keyword{ genetic }

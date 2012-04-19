@@ -122,6 +122,7 @@ predict.ANN <-
 function(object,input,...)
 {
 cat("*predict ANN object \n")
+	input <- as.matrix(input)
 	if (is.null(input)) stop("ERROR: 'input' is missing", call. = FALSE)
 	if(any(is.na(input))) stop("ERROR: missing values in 'input'")
 	if(class(object)!="ANN") stop("ERROR: object must be a ANN class ")

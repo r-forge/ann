@@ -133,7 +133,7 @@ double ArtificialNeuralNetwork::getMeanSquareError(double* target){
 ////////////////////////////////////////////
 double ArtificialNeuralNetwork::sigmoid(double inValue){
 	
-	return (double)(1/(1+exp(-inValue)));
+	return 1.0/(1+exp(-inValue));
 
 }
 ////////////////////////////////////////////
