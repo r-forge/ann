@@ -15,7 +15,7 @@ This package provides a feedforward Artificial Neural Network (ANN)
 \tabular{ll}{
 Package: \tab ANN\cr
 Type: \tab Package\cr
-Version: \tab 0.1.3\cr
+Version: \tab 0.1.4\cr
 Date: \tab 2012-04-06\cr
 License: \tab GPL-3 \cr
 LazyLoad: \tab yes\cr
