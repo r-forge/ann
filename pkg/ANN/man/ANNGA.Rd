@@ -119,12 +119,12 @@ data("dataANN")
                 population  =100,
                 mutation = 0.3,
                 crossover = 0.7,
-                maxGen  =1000,
+                maxGen  =10,
                 error   =0.001)
 
 
 #More examples 
-demo(ANN)
+#demo(ANN)
 }
 \keyword{ neural }
 \keyword{ genetic }
