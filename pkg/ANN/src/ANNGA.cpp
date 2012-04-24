@@ -127,44 +127,22 @@ SEXP ANNGA(SEXP matrixInput,
 ////////////////////////////////////////////////////////
 
 
-
-
-
 	Rcpp::NumericMatrix output(matrixOutput);
-	//RcppMatrix<double> output(lengthData, kOut); 	// reserve n by k matrix
 	for (int i=0; i<lengthData; i++) {
 	    for (int j=0; j<kOut; j++) {
 		output(i,j) = ANNT->outputANN[i][j];
 	    }
 	}
-
-	/*RcppVector<double> chromosome(ANNT->mWeightConNum);
-	for (int i=0; i<ANNT->mWeightConNum; i++) {
-		chromosome(i) = ANNT->mChromosomes[ANNT->bestIndividual][i];
-	}*/
-
-	//Rcpp::NumericVector chromosome(ANNT->mChromosomes[ANNT->bestIndividual]);	
+	
 	Rcpp::NumericVector chromosome(ANNT->mWeightConNum);
 	for (int i=0; i<ANNT->mWeightConNum; i++) {
 		chromosome[i] = ANNT->mChromosomes[ANNT->bestIndividual][i];
 	}
-
-
 	
 	Rcpp::NumericVector RvectorFitness(ANNT->vectorFitness.size());	
-	//Rcpp::NumericVector RvectorFitness(ANNT->vectorFitness);
-	//RcppVector<double> RvectorFitness(ANNT->vectorFitness.size());
 	for (int i=0; i<ANNT->vectorFitness.size(); i++) {
 		RvectorFitness[i] = ANNT->vectorFitness[i];	
 	}
-
-	
-	/*RcppVector<double> RvectorFitness(ANNT->vectorFitness.size());
-	for (int i=0; i<ANNT->vectorFitness.size(); i++) {
-		RvectorFitness(i) = ANNT->vectorFitness[i];	
-	}*/
-
-
 
 	return Rcpp::List::create(Rcpp::Named("input") 		= matrixInput,
 				  Rcpp::Named("desiredOutput")	= matrixOutput,
