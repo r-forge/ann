@@ -1,11 +1,18 @@
-2011-02-22  Francis Roy-Desrosiers  <francis.roy.desrosiers@gmail.com>
+2011-04-24  Francis Roy-Desrosiers  <francis.roy.desrosiers@gmail.com>
+
+	* DESCRIPTION: Release 0.1.5
+
+	* scr/ANNGA.cpp :		Rcpp added to make the code neater
+
+
+2011-04-20  Francis Roy-Desrosiers  <francis.roy.desrosiers@gmail.com>
 
 	* DESCRIPTION: Release 0.1.4
 
 	* R :				bug fixed
 
 
-2011-02-22  Francis Roy-Desrosiers  <francis.roy.desrosiers@gmail.com>
+2011-04-16  Francis Roy-Desrosiers  <francis.roy.desrosiers@gmail.com>
 
 	* DESCRIPTION: Release 0.1.3
 

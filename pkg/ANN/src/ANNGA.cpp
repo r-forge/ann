@@ -25,10 +25,13 @@
 #include <R.h>
 #include <Rinternals.h>
 #include <Rmath.h>
+#include <Rcpp.h>
 
+using namespace Rcpp ;
 extern "C"{
 
 ////////////////////////////////////////////////////////
+//RcppExport 
 SEXP ANNGA(SEXP matrixInput,
 	SEXP matrixOutput,
 	SEXP design, 
@@ -43,7 +46,7 @@ SEXP ANNGA(SEXP matrixInput,
 	SEXP rthreads,
 	SEXP rCppSeed) {
 
-
+ try {
 ////////////////////////////////////////////////////////
 ///////////////////INITIALIZATION///////////////////////
 ////////////////////////////////////////////////////////
@@ -57,6 +60,7 @@ SEXP ANNGA(SEXP matrixInput,
 		
 	double** matIn = new double*[lengthData];
 	double** matOut = new double*[lengthData];
+
 
 	/* EXAMPLE R->CPP matrix
 	for( i=0; i<nrow; i++){ 
@@ -123,86 +127,68 @@ SEXP ANNGA(SEXP matrixInput,
 ////////////////////////////////////////////////////////
 
 
-	SEXP  list, list_names;
-	PROTECT(list = allocVector(VECSXP, 16));    
-	PROTECT(list_names = allocVector(VECSXP,16));
-
-	SEXP output, chromosome, mse, nbOfGen, RvectorFitness;
-
-	SET_VECTOR_ELT(list_names,0,mkChar("input"));
-	SET_VECTOR_ELT(list, 0, matrixInput);
-
-	SET_VECTOR_ELT(list_names,1,mkChar("desiredOutput"));
-	SET_VECTOR_ELT(list, 1, matrixOutput);
 
 
-	PROTECT(output = allocMatrix(REALSXP, lengthData, kOut));
+
+	Rcpp::NumericMatrix output(matrixOutput);
+	//RcppMatrix<double> output(lengthData, kOut); 	// reserve n by k matrix
 	for (int i=0; i<lengthData; i++) {
 	    for (int j=0; j<kOut; j++) {
-		REAL(output)[i+lengthData*j] = ANNT->outputANN[i][j];
+		output(i,j) = ANNT->outputANN[i][j];
 	    }
 	}
-	SET_VECTOR_ELT(list_names,2,mkChar("output"));
-	SET_VECTOR_ELT(list, 2, output);
 
-	SET_VECTOR_ELT(list_names,3,mkChar("nbNeuronPerLayer"));
-	SET_VECTOR_ELT(list, 3, design);
-
-	SET_VECTOR_ELT(list_names,4,mkChar("maxPop"));
-	SET_VECTOR_ELT(list, 4, maxPop);
-
-	SET_VECTOR_ELT(list_names,5,mkChar("startMutation"));
-	SET_VECTOR_ELT(list, 5, mutation);
-
-	/*PROTECT(dendmutation 	= allocVector(REALSXP,1 ));
-	REAL(dendmutation)[0]	=ANNT->crossRate;			
-	SET_VECTOR_ELT(list_names,6,mkChar("endMutation"));
-	SET_VECTOR_ELT(list, 6, dendmutation);*/
-
-	SET_VECTOR_ELT(list_names,6,mkChar("crossover"));
-	SET_VECTOR_ELT(list, 6, crossover);
-
-	SET_VECTOR_ELT(list_names,7,mkChar("maxW"));
-	SET_VECTOR_ELT(list, 7, maxW);
-
-	SET_VECTOR_ELT(list_names,8,mkChar("minW"));
-	SET_VECTOR_ELT(list, 8, minW);
-
-	SET_VECTOR_ELT(list_names,9,mkChar("maxGen"));
-	SET_VECTOR_ELT(list, 9, maxGen);
-	
-	SET_VECTOR_ELT(list_names,10,mkChar("desiredEror"));
-	SET_VECTOR_ELT(list, 10, error);
-
-	PROTECT(chromosome = allocVector(REALSXP,ANNT->mWeightConNum ));
+	/*RcppVector<double> chromosome(ANNT->mWeightConNum);
 	for (int i=0; i<ANNT->mWeightConNum; i++) {
-		REAL(chromosome)[i] = ANNT->mChromosomes[ANNT->bestIndividual][i];
+		chromosome(i) = ANNT->mChromosomes[ANNT->bestIndividual][i];
+	}*/
+
+	//Rcpp::NumericVector chromosome(ANNT->mChromosomes[ANNT->bestIndividual]);	
+	Rcpp::NumericVector chromosome(ANNT->mWeightConNum);
+	for (int i=0; i<ANNT->mWeightConNum; i++) {
+		chromosome[i] = ANNT->mChromosomes[ANNT->bestIndividual][i];
 	}
-	SET_VECTOR_ELT(list_names,11,mkChar("bestChromosome"));
-	SET_VECTOR_ELT(list, 11, chromosome);
 
-	PROTECT(mse	 	= allocVector(REALSXP,1 ));
-	REAL(mse)[0]		=ANNT->mFitnessValues[ANNT->bestIndividual];
-	SET_VECTOR_ELT(list_names,12,mkChar("mse"));
-	SET_VECTOR_ELT(list,12, mse);
 
-	PROTECT(nbOfGen	 	= allocVector(INTSXP,1 ));
-	INTEGER(nbOfGen)[0]	=ANNT->mGenerationNumber;
-	SET_VECTOR_ELT(list_names,13,mkChar("nbOfGen"));
-	SET_VECTOR_ELT(list, 13, nbOfGen);
-
-	PROTECT(RvectorFitness = allocVector(REALSXP,(int)ANNT->vectorFitness.size() ));
-	for (int i=0; i<(int)ANNT->vectorFitness.size(); i++) {
-		REAL(RvectorFitness)[i] = ANNT->vectorFitness[i];	
+	
+	Rcpp::NumericVector RvectorFitness(ANNT->vectorFitness.size());	
+	//Rcpp::NumericVector RvectorFitness(ANNT->vectorFitness);
+	//RcppVector<double> RvectorFitness(ANNT->vectorFitness.size());
+	for (int i=0; i<ANNT->vectorFitness.size(); i++) {
+		RvectorFitness[i] = ANNT->vectorFitness[i];	
 	}
-	SET_VECTOR_ELT(list_names,14,mkChar("vectorFitness"));
-	SET_VECTOR_ELT(list, 14, RvectorFitness);
 
-	setAttrib(list, R_NamesSymbol, list_names);
-	ANNT->release (); //release the memory, TO DO, NOT WORKING
-	UNPROTECT(7);
+	
+	/*RcppVector<double> RvectorFitness(ANNT->vectorFitness.size());
+	for (int i=0; i<ANNT->vectorFitness.size(); i++) {
+		RvectorFitness(i) = ANNT->vectorFitness[i];	
+	}*/
 
-return list;    
+
+
+	return Rcpp::List::create(Rcpp::Named("input") 		= matrixInput,
+				  Rcpp::Named("desiredOutput")	= matrixOutput,
+				  Rcpp::Named("output") 	= output, 
+				  Rcpp::Named("nbNeuronPerLayer") = design,
+				  Rcpp::Named("population") 	= maxPop,
+				  Rcpp::Named("mutation") 	= mutation,
+				  Rcpp::Named("crossover") 	= crossover,
+				  Rcpp::Named("maxW") 		= maxW,
+				  Rcpp::Named("minW") 		= minW,
+				  Rcpp::Named("maxGen") 	= maxGen, 
+				  Rcpp::Named("mse") 		= ANNT->mFitnessValues[ANNT->bestIndividual],
+				  Rcpp::Named("bestChromosome") = chromosome,
+				  Rcpp::Named("desiredEror") 	= error,
+				  Rcpp::Named("nbOfGen")        = ANNT->mGenerationNumber,
+				  Rcpp::Named("vectorFitness")  = RvectorFitness
+				  );
+
+    } catch( std::exception &ex ) {
+	forward_exception_to_r( ex );
+    } catch(...) { 
+	::Rf_error( "c++ exception (unknown reason)" ); 
+    }
+ return R_NilValue;
 }
 
 
