@@ -62,6 +62,8 @@ plot(ANNObject)
 
 
 p		<-predict( ANNObject, input )
+
+#printing 'p'
 p
 plot(p$predict,main="Predicted Output")
 

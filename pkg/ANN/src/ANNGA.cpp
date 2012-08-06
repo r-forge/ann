@@ -21,7 +21,10 @@
 
 
 #include <cmath>
-#include "files/Training.cpp"
+#include "files/globalFunction.cpp"
+#include "files/ga.cpp"
+#include "files/cudaannMP.cpp"
+#include "files/predict.cpp"
 #include <R.h>
 #include <Rinternals.h>
 #include <Rmath.h>
@@ -52,17 +55,17 @@ SEXP ANNGA(SEXP matrixInput,
 ////////////////////////////////////////////////////////
 	
 	
-	int *Rdim = INTEGER(getAttrib(matrixOutput, R_DimSymbol));
-	int kOut = Rdim[1];
-	Rdim = INTEGER(getAttrib(matrixInput, R_DimSymbol));
-	int kIn = Rdim[1];	  //cols
-	int lengthData = Rdim[0]; //rows
+	int *Rdim 		= INTEGER(getAttrib(matrixOutput, R_DimSymbol));
+	int kOut 		= Rdim[1];
+	Rdim 			= INTEGER(getAttrib(matrixInput, R_DimSymbol));
+	int kIn 		= Rdim[1];	  //cols
+	int lengthData 		= Rdim[0]; //rows
 		
-	double** matIn = new double*[lengthData];
-	double** matOut = new double*[lengthData];
+	double** matIn 		= new double*[lengthData];
+	double** matOut 	= new double*[lengthData];
 
 
-	/* EXAMPLE R->CPP matrix
+	/* EXAMPLE R matrix to CPP array 
 	for( i=0; i<nrow; i++){ 
                 for( j=0; j<ncol; j++){ 
                         Rprintf( " %f ", p[i+nrow*j] ) ; 
@@ -83,18 +86,15 @@ SEXP ANNGA(SEXP matrixInput,
 	    	}
 	}
 
-	int *nbNeuronPerLayer;
-	nbNeuronPerLayer=INTEGER(design);
-	int nbOfLayer = length(design);
-
+	int *nbNeuronPerLayer	=INTEGER(design);
+	int 	nbOfLayer 	=length(design);
 	int 	iMaxPop		=INTEGER(maxPop)[0];
 	double 	dmutation 	=REAL(mutation)[0];
 	double 	dcrossover	=REAL(crossover)[0];
-	double 	dmaxW		=REAL(maxW)[0];
-	double 	dminW		=REAL(minW)[0];
+	double	weightRange[2]	={REAL(minW)[0] , REAL(maxW)[0]};
 	int 	imaxGen		=INTEGER(maxGen)[0];
 	double 	derror		=REAL(error)[0];
-	bool	printBestChromosome = (bool)INTEGER(rprintBestChromosome)[0];
+	bool printBestChromosome= (bool)INTEGER(rprintBestChromosome)[0];
 	int	threads 	= INTEGER(rthreads)[0];
 	int	cppSeed		= INTEGER(rCppSeed)[0];
 
@@ -104,7 +104,10 @@ SEXP ANNGA(SEXP matrixInput,
 ////////////////////////////////////////////////////////
 
 
-	ANNTraining *ANNT= new ANNTraining(nbOfLayer , nbNeuronPerLayer ,lengthData, matIn, matOut, iMaxPop, dmutation,  dcrossover, dminW, dmaxW, printBestChromosome, threads, cppSeed);
+	CUDAANNMP *ANNT	= new CUDAANNMP(nbOfLayer , nbNeuronPerLayer ,lengthData,
+				matIn, matOut, iMaxPop, dmutation,  
+				dcrossover, weightRange, printBestChromosome,
+				threads, cppSeed);
 
 
 ////////////////////////////////////////////////////////
@@ -112,11 +115,9 @@ SEXP ANNGA(SEXP matrixInput,
 ////////////////////////////////////////////////////////
 
 
-	ANNT->initializePopulation ();
 
-
-	while(ANNT->mGenerationNumber<= imaxGen && ANNT->mFitnessValues[ANNT->bestIndividual]>derror){
-		ANNT->cycle (true); 
+	while(ANNT->s.nbGen()<= imaxGen && ANNT->bestMSE()>derror){
+		ANNT->generation (true); 
 	}
 
 	ANNT->getANNresult(true);
@@ -127,26 +128,29 @@ SEXP ANNGA(SEXP matrixInput,
 ////////////////////////////////////////////////////////
 
 
-	Rcpp::NumericMatrix output(matrixOutput);
+	Rcpp::NumericMatrix ANNOutput(lengthData,kOut);
 	for (int i=0; i<lengthData; i++) {
 	    for (int j=0; j<kOut; j++) {
-		output(i,j) = ANNT->outputANN[i][j];
+		ANNOutput(i,j) = ANNT->outputANN[i][j];
 	    }
 	}
 	
 	Rcpp::NumericVector chromosome(ANNT->mWeightConNum);
 	for (int i=0; i<ANNT->mWeightConNum; i++) {
-		chromosome[i] = ANNT->mChromosomes[ANNT->bestIndividual][i];
+		chromosome[i] = 0.0; //ANNT->mChromosomes[ANNT->bestIndividual][i];
 	}
 	
 	Rcpp::NumericVector RvectorFitness(ANNT->vectorFitness.size());	
-	for (int i=0; i<ANNT->vectorFitness.size(); i++) {
+	for (int i=0; i< (int)ANNT->vectorFitness.size(); i++) {
 		RvectorFitness[i] = ANNT->vectorFitness[i];	
 	}
 
+	double finalMSE = ANNT->bestMSE();
+	double nbGen	= ANNT->s.nbGen();
+	//ANNT->releasePredict (); //SHOULD CALL DESTRUCTOR
 	return Rcpp::List::create(Rcpp::Named("input") 		= matrixInput,
 				  Rcpp::Named("desiredOutput")	= matrixOutput,
-				  Rcpp::Named("output") 	= output, 
+				  Rcpp::Named("output") 	= ANNOutput, 
 				  Rcpp::Named("nbNeuronPerLayer") = design,
 				  Rcpp::Named("population") 	= maxPop,
 				  Rcpp::Named("mutation") 	= mutation,
@@ -154,13 +158,13 @@ SEXP ANNGA(SEXP matrixInput,
 				  Rcpp::Named("maxW") 		= maxW,
 				  Rcpp::Named("minW") 		= minW,
 				  Rcpp::Named("maxGen") 	= maxGen, 
-				  Rcpp::Named("mse") 		= ANNT->mFitnessValues[ANNT->bestIndividual],
+				  Rcpp::Named("mse") 		= finalMSE,
 				  Rcpp::Named("bestChromosome") = chromosome,
 				  Rcpp::Named("desiredEror") 	= error,
-				  Rcpp::Named("nbOfGen")        = ANNT->mGenerationNumber,
+				  Rcpp::Named("nbOfGen")        = nbGen,
 				  Rcpp::Named("vectorFitness")  = RvectorFitness
 				  );
-
+	
     } catch( std::exception &ex ) {
 	forward_exception_to_r( ex );
     } catch(...) { 
@@ -174,6 +178,7 @@ SEXP ANNGA(SEXP matrixInput,
 ////////////////////////////////////////////////////////
 SEXP predictANNGA(SEXP matrixInput,SEXP design, SEXP chromosome) {
 
+try {
 
 ////////////////////////////////////////////////////////
 ///////////////////INITIALIZATION///////////////////////
@@ -183,7 +188,6 @@ SEXP predictANNGA(SEXP matrixInput,SEXP design, SEXP chromosome) {
 	int *Rdim = INTEGER(getAttrib(matrixInput, R_DimSymbol));
 	int lengthData = Rdim[0]; //rows
 	int kIn = Rdim[1];	  //cols
-
 	double** matIn = new double*[lengthData];
 
 	for (int i=0; i<lengthData; i++) {
@@ -193,12 +197,10 @@ SEXP predictANNGA(SEXP matrixInput,SEXP design, SEXP chromosome) {
 	    	}
 	}
 
-	int *nbNeuronPerLayer;
-	nbNeuronPerLayer=INTEGER(design);
-	int nbOfLayer = length(design);
-	int kOut = nbNeuronPerLayer[nbOfLayer-1];
-
-	double *cppChromosome = REAL(chromosome);
+	int *nbNeuronPerLayer	=INTEGER(design);	
+	int 	nbOfLayer	= length(design);
+	int 	kOut 		= nbNeuronPerLayer[nbOfLayer-1];
+	double *cppChromosome 	= REAL(chromosome);
 
 
 ////////////////////////////////////////////////////////
@@ -206,9 +208,9 @@ SEXP predictANNGA(SEXP matrixInput,SEXP design, SEXP chromosome) {
 ////////////////////////////////////////////////////////
 
 
-	ANNTraining *ANNT= new ANNTraining(nbOfLayer , nbNeuronPerLayer ,lengthData, matIn);
-	ANNT->ann->loadWights (cppChromosome);
-	ANNT->getANNresult(false);
+	PREDICT *ANNT= new PREDICT(nbOfLayer , nbNeuronPerLayer ,lengthData, matIn);
+	ANNT->load(cppChromosome);
+	ANNT->getPredictResult();
 
 
 
@@ -217,23 +219,23 @@ SEXP predictANNGA(SEXP matrixInput,SEXP design, SEXP chromosome) {
 ////////////////////////////////////////////////////////
 
 
-	SEXP  list, list_names,output;
-	PROTECT(list = allocVector(VECSXP, 1));    
-	PROTECT(list_names = allocVector(VECSXP,1));
-
-	PROTECT(output = allocMatrix(REALSXP, lengthData, kOut));
+	Rcpp::NumericMatrix output(lengthData,kOut);
 	for (int i=0; i<lengthData; i++) {
 	    for (int j=0; j<kOut; j++) {
-		REAL(output)[i+lengthData*j] = ANNT->outputANN[i][j];
+		output(i,j) = ANNT->outputANN[i][j];
 	    }
 	}
-	SET_VECTOR_ELT(list_names,0,mkChar("predict"));
-	SET_VECTOR_ELT(list, 0, output);
-
-	setAttrib(list, R_NamesSymbol, list_names);
+	
 	//ANNT->release (); //release the memory, TO DO NOT WORKING
-	UNPROTECT(3);
-    return list;
+	return Rcpp::List::create(Rcpp::Named("predict") = output);
+
+    } catch( std::exception &ex ) {
+	forward_exception_to_r( ex );
+    } catch(...) { 
+	::Rf_error( "c++ exception (unknown reason)" ); 
+    }
+ return R_NilValue;
+
 }
 
 

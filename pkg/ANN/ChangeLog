@@ -2,7 +2,9 @@
 
 	* DESCRIPTION: Release 0.1.5
 
-	* scr/ANNGA.cpp :		Rcpp added to make the code neater
+	* scr/ :			Rcpp added to make the code neater.
+	* scr/ :			OpenMP added to make the code faster.
+	* scr/ :			Code reshape for multi-threading purposes.
 
 
 2011-04-20  Francis Roy-Desrosiers  <francis.roy.desrosiers@gmail.com>

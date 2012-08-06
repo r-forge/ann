@@ -6,12 +6,13 @@
 Printing/plot method for an ANN objects}
 
 \usage{
-\method{print}{ANN}(x,...)
-\method{plot}{ANN}(x,...)
+  \method{print}{ANN}(x,...)
+  \method{plot}{ANN}(x,type="p",...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{x}{Object of class "ANN", an already optimized ANN.}
+  \item{type}{type of plot "p" for points, "l" for lines, etc.}
   \item{\dots}{not used}
 }
 %\details{

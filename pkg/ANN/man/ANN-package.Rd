@@ -6,10 +6,7 @@ Artificial Neural Network optimized by Genetic Algorithm
 }
 \description{
 This package provides a feedforward Artificial Neural Network (ANN) 
-	optimized by Genetic Algorithm (GA). Modifications in the
-	Genetic Algorithm from CUDAANN r6 have been made to 
-	improve the speed, the convergence and the memory 
-	management.
+	optimized by Genetic Algorithm (GA).
 }
 \details{
 \tabular{ll}{

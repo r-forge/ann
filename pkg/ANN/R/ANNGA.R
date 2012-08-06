@@ -33,7 +33,8 @@ function(x,
 	maxW=25,
 	minW=-25,
 	maxGen=1000,
-	error=0.05,
+	error=0.001,
+	threads=1,
 	printBestChromosone=TRUE,...)UseMethod("ANNGA")
 
 
@@ -47,22 +48,25 @@ function(x,
 	maxW=25,
 	minW=-25,
 	maxGen=1000,
-	error=0.05,
+	error=0.001,
+	threads=1,
 	printBestChromosone=TRUE,...) {
 
 
-	threads=1 #openMP, still in developpement.
+
 	input <- as.matrix(x)
 	output <- as.matrix(y)
-	if(any(is.na(input))) stop("ERROR: missing values in 'x'")
-	if(any(is.na(output))) stop("ERROR: missing values in 'y'")
+	if(any(is.na(input))) 		stop("ERROR: missing values in 'x'")
+	if(any(is.na(output))) 		stop("ERROR: missing values in 'y'")
 	if(dim(input)[1L] != dim(output)[1L]) stop("ERROR: nrows of 'y' and 'x' must match")
-	if(dim(input)[1L] <=0) stop("ERROR: nrows of 'x' and 'y' must be >0 ")
+	if(dim(input)[1L] <=0) 		stop("ERROR: nrows of 'x' and 'y' must be >0 ")
+	if(maxGen<1) 			stop("ERROR: maxGen must be positive")
+	if(maxW<minW) 			stop("ERROR: maxW must be greater than minW")
+	if(threads<=0) 			stop("ERROR:  'threads' must be >0")
 	if (population<20){
 		cat("The population should be over 20,maxPop=",population, "  , the default population is 100   \n")
 		population<-100
 	}
-	if(threads<=0) stop("ERROR:  'threads' must be >0")
 
 	cppSeed<-sample.int(2147483647, 1) 
 	   
@@ -85,7 +89,7 @@ function(x,
 	if(dim(output)[2]==1){est$R2<-1-sum((output-est$output)^2)/sum((output-mean(output))^2)}else{est$R2<-NULL}
 	est$call <- match.call()
 	class(est) <- "ANN"
-	#print(est)
+	if(est$nbOfGen==0) cat("ERROR: the 'error' sould be smaller in order to obtimize the ANN")
 	est
 }
 
@@ -102,7 +106,7 @@ function(x,...)
 	cat("\nMean Squared Error------------------------------>",x$mse)
 	if (!(is.null(x$R2))){
 	cat("\nR2---------------------------------------------->",x$R2) 
-	}else{cat("\nIf more than 1 output, R2 is not computed")}
+	}else{cat("\nOutput must be univariate to compute R2")}
 	cat("\nNumber of generation---------------------------->",x$nbOfGen)
 	cat("\nWeight range at initialization------------------> [",x$maxW,",",x$minW,"]")
 	cat("\nWeight range resulted from the optimisation-----> [",max(x$bestChromosome),",",min(x$bestChromosome),"] ")
@@ -117,34 +121,35 @@ function(x,...)
 	cat("\n\n")
 }
 
-
 predict.ANN <-
 function(object,input,...)
 {
-cat("*predict ANN object \n")
+	cat("*predict ANN object \n")
 	input <- as.matrix(input)
-	if (is.null(input)) stop("ERROR: 'input' is missing", call. = FALSE)
-	if(any(is.na(input))) stop("ERROR: missing values in 'input'")
-	if(class(object)!="ANN") stop("ERROR: object must be a ANN class ")
-	if(dim(input)[1L] <=0) stop("ERROR: nrows of 'input' must be >0 ")
-	input <- as.matrix(input)
+	if (is.null(input)) 		stop("ERROR: 'input' is missing", call. = FALSE)
+	if(any(is.na(input))) 		stop("ERROR: missing values in 'input'")
+	if(class(object)!="ANN") 	stop("ERROR: object must be a ANN class ")
+	if(dim(input)[1L] <=0) 		stop("ERROR: nrows of 'input' must be >0 ")
+	input 				<- as.matrix(input)
 	est <- .Call("predictANNGA",               
-		         input, object$nbNeuronPerLayer,object$bestChromosome,
-		         PACKAGE="ANN")
-	est$callpredict <- match.call()
-	est<-c(object,est)
-	class(est) <- "ANN"
+		        input, 
+			object$nbNeuronPerLayer,
+			object$bestChromosome,
+		        PACKAGE="ANN")
+	est$callpredict 		<- match.call()
+	est				<- c(object,est)
+	class(est) 			<- "ANN"
 	est
 }
 
-
 plot.ANN <-
-function(x,...)
+function(x,type="p",...)
 {
-	if(dim(x$desiredOutput)[2L]>1) stop("NOTE: to plot an ANN object output must be univariate")
+	if(dim(x$desiredOutput)[2L]>1)	stop("NOTE: to plot an ANN object, output must be univariate")
 	#par(mfrow=c(1,1))
-	plot(x$desiredOutput,xlab="x axis", ylab="y axis")
-	lines(x$output,col="red")
+	plot(x$desiredOutput,xlab="x axis", ylab="y axis",type=type)
+	if(type=="l"){lines(x$output,col="red")}
+	if(type=="p"){points(x$output,col="red")}
 	title("Neural Network output vs desired output")
 	legend("topleft", c("desired Ouput","Output"), cex=0.6, bty="n", fill=c("black","red"))
 }

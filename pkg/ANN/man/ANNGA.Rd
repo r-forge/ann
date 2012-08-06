@@ -17,7 +17,8 @@ ANNGA	(	x,
 		maxW = 25,
 		minW = -25,
 		maxGen = 1000,
-		error = 0.05,
+		error = 0.001,
+		threads=1,
 		printBestChromosone=TRUE,
 		...)
 }
@@ -71,9 +72,9 @@ ANNGA	(	x,
 	For a better understanding, this option prints the weight of the best chromosome
 	for each generation. 
 }
-%   \item{threads}{
-%	Number of threads to be used, if the number is greater than your CPU number of threads, then your number will be set to your CPU number of threads.
-%}
+  \item{threads}{
+	Number of threads to be used, if the number is greater than your CPU number of threads, then your number will be set to your CPU number of threads.
+}
   \item{\dots}{
     
 }
@@ -113,18 +114,19 @@ Once an object of class "ANN" has been created, you can \code{print()} and \code
 data("dataANN")
 
 #Example
-	        ANNGA(x    =input,
+                ANNGA(x    =input,
                 y       =output,
                 design  =c(1, 3, 1),
                 population  =100,
                 mutation = 0.3,
                 crossover = 0.7,
-                maxGen  =10,
-                error   =0.001)
+                maxGen  =1000,
+                error   =0.001,
+                threads=2)
 
 
 #More examples 
-#demo(ANN)
+demo(ANN)
 }
 \keyword{ neural }
 \keyword{ genetic }

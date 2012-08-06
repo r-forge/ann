@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////
-// ANN.cpp: Artificial Neural Network optimized by Genetic Algorithm 
+// ann.cpp: Artificial Neural Network optimized by Genetic Algorithm 
 //
 // Copyright (C) 2009, 2010 Emre Caglar
 // Copyright (C) 2011-2012 Francis Roy-Desrosiers
@@ -18,8 +18,8 @@
 // You should have received a copy of the GNU General Public License
 // along with ANN.  If not, see <http://www.gnu.org/licenses/>.
 ////////////////////////////////////////////////////////////////////
-#ifndef ARTIFICIAL_NEURAL_NETWORK_CPP
-#define ARTIFICIAL_NEURAL_NETWORK_CPP
+#ifndef ANN_CPP
+#define ANN_CPP
 #include "ANN.h"
 #include <cstdlib>
 #include <cmath>
@@ -27,81 +27,163 @@
 #include <R.h>
 
 using namespace std;
+ANN::ANN(){
+//Rprintf("ANN()\n");
+}
 
-ArtificialNeuralNetwork::ArtificialNeuralNetwork(int numOfLay, int *numOfNeurunsInEachLayer){
+ANN::ANN(int numOfLay, int *neuronPerLayer_, double *wRange_){
+//Rprintf("ANN(.....)\n");
+init(numOfLay,neuronPerLayer_, wRange_);
+}
 
 
-	m_numberOfLayers	= numOfLay;
+ANN::ANN(const ANN& a){
+//Rprintf("ANN(ANN& a)\n");
+	nbLayers	= a.nbLayers;
+	wRange[0]=a.wRange[0];
+	wRange[1]=a.wRange[1];
 
-	//save neuron numbers in each layer
-	m_numOfNeurons = new int[m_numberOfLayers];
-	m_neuronValues = new double*[m_numberOfLayers];
-	for(int i = 0 ; i < m_numberOfLayers ; i++){
-		//save neuron numbers in each layer
-		m_numOfNeurons[i] = numOfNeurunsInEachLayer[i];
-		//allocate memory for neuron values - represented as 2D matrix -
-		m_neuronValues[i] = new double[m_numOfNeurons[i]];
+	neuronPerLayer=a.neuronPerLayer;
+	mse=a.mse;
+
+
+	X 		= new double*[nbLayers];
+	for(int i = 0 ; i < nbLayers ; i++){
+		X[i] = new double[neuronPerLayer[i]];
 	}
-	 
 
 	//allocate memory for weights
-	m_neuronWeights = new double **[m_numberOfLayers];
-	for(int i = 1 ; i < m_numberOfLayers ; i++){  
-		m_neuronWeights[i] = new double*[m_numOfNeurons[i]];
-		for(int j = 0 ; j < m_numOfNeurons[i] ; j++){
-			m_neuronWeights[i][j] = new double[m_numOfNeurons[i-1]+1];
-			for(int k = 0 ; k < m_numOfNeurons[i-1]+1 ; k++){
-				m_neuronWeights[i][j][k]=0;   
+	W 	= new double **[nbLayers];
+	for(int i = 1 ; i < nbLayers ; i++){  
+		W[i] = new double*[neuronPerLayer[i]];
+		for(int j = 0 ; j < neuronPerLayer[i] ; j++){
+			W[i][j] = new double[neuronPerLayer[i-1]+1];
+			for(int k = 0 ; k < neuronPerLayer[i-1]+1 ; k++){
+				W[i][j][k] = a.W[i][j][k];  
+			}
+		}
+	}
+}
+
+void ANN::init(int numOfLay, int *neuronPerLayer_, double *wRange_){
+
+//Rprintf("ANN.init()\n");
+	nbLayers	= numOfLay;
+	wRange[0]=wRange_[0];
+	wRange[1]=wRange_[1];
+	neuronPerLayer=neuronPerLayer_;
+	mse=0;
+
+	X 		= new double*[nbLayers];
+	for(int i = 0 ; i < nbLayers ; i++){
+		//allocate memory for neuron values - represented as 2D matrix -
+		X[i] = new double[neuronPerLayer[i]];
+	}
+
+	//allocate memory for weights
+	W 	= new double **[nbLayers];
+	for(int i = 1 ; i < nbLayers ; i++){  
+		W[i] = new double*[neuronPerLayer[i]];
+		for(int j = 0 ; j < neuronPerLayer[i] ; j++){
+			W[i][j] = new double[neuronPerLayer[i-1]+1];
+			for(int k = 0 ; k < neuronPerLayer[i-1]+1 ; k++){
+				W[i][j][k] = unifRand(wRange[0], wRange[1]);   
 			}
 		}
 	}
 }
 ////////////////////////////////////////////
-ArtificialNeuralNetwork::~ArtificialNeuralNetwork(){}
-////////////////////////////////////////////
-void ArtificialNeuralNetwork::release (){
+ANN::~ANN(){
 
-	for (int i = 1; i < m_numberOfLayers; ++i) {
-		for (int j = 0; j < m_numOfNeurons[i]; ++j){
-			delete [] m_neuronWeights[i][j];
+	for (int i = 1; i < nbLayers; ++i) {
+		for (int j = 0; j < neuronPerLayer[i]; ++j){
+			delete [] W[i][j];
 		}
-		delete [] m_neuronWeights[i];
+		delete [] W[i];
 	}
-	delete [] m_neuronWeights;
+	delete [] W;
 
 
-	for(int i  = 0 ; i < m_numberOfLayers ; ++i)
-		delete[] m_neuronValues[i];
-	delete[] m_neuronValues;
+	for(int i  = 0 ; i < nbLayers ; ++i)
+		delete[] X[i];
+	delete[] X;
 
-	delete[] m_numOfNeurons;
+	delete[] neuronPerLayer;
+
+}
+////////////////////////////////////////////
+void ANN::release (){
+
+	for (int i = 1; i < nbLayers; ++i) {
+		for (int j = 0; j < neuronPerLayer[i]; ++j){
+			delete [] W[i][j];
+		}
+		delete [] W[i];
+	}
+	delete [] W;
+
+
+	for(int i  = 0 ; i < nbLayers ; ++i)
+		delete[] X[i];
+	delete[] X;
+
+	delete[] neuronPerLayer;
 
 }
 
+void ANN::copyANN(ANN*& a){
+
+	for(int i = 1 ; i < nbLayers ; i++){  
+		for(int j = 0 ; j < neuronPerLayer[i] ; j++){
+			for(int k = 0 ; k < neuronPerLayer[i-1]+1 ; k++){
+				W[i][j][k] =  a->W[i][j][k];  
+			}
+		}
+	}
+	mse=a->mse;
+}
+
+ANN& ANN::operator = (const ANN& a)
+{
+      if (this == &a)
+            return * this;
+
+	for(int i = 1 ; i < nbLayers ; i++){  
+		for(int j = 0 ; j < neuronPerLayer[i] ; j++){
+			for(int k = 0 ; k < neuronPerLayer[i-1]+1 ; k++){
+				W[i][j][k] =  a.W[i][j][k];  
+			}
+		}
+	}
+	mse=a.mse;
+
+      return * this;
+}
+
 ////////////////////////////////////////////
-void ArtificialNeuralNetwork::feedForward(double *input){
+void ANN::feedForward(double *input){
 
 	double sum;
 	//first set input layer with input pattern
-	for(int i = 0 ; i < m_numOfNeurons[0] ; i++){
-		m_neuronValues[0][i] = input[i];
+	for(int i = 0 ; i < neuronPerLayer[0] ; i++){
+		X[0][i] = input[i];
 	}
 
 	//then feed forward it
 	//for each layer in neural network
-	for(int i = 1 ; i < m_numberOfLayers ; i++){
+	for(int i = 1 ; i < nbLayers ; i++){
 
 		//for each neuron on a particular layer
-		for(int j = 0 ; j < m_numOfNeurons[i] ; j++){
+		for(int j = 0 ; j < neuronPerLayer[i] ; j++){
 
 			sum = 0.0; //reset sum
-			for(int k = 0 ; k < m_numOfNeurons[i-1] ; k++){
-				sum += m_neuronValues[i-1][k] * m_neuronWeights[i][j][k];
+			for(int k = 0 ; k < neuronPerLayer[i-1] ; k++){
+				sum += X[i-1][k] * W[i][j][k];
 			}
 			//add bias
-			sum +=m_neuronWeights[i][j][m_numOfNeurons[i-1]];
+			sum += W[i][j][neuronPerLayer[i-1]];
 
-			m_neuronValues[i][j] = sigmoid(sum);
+			X[i][j] = sigmoid(sum);
 			
 		}
 	}
@@ -112,49 +194,60 @@ void ArtificialNeuralNetwork::feedForward(double *input){
 
 
 ////////////////////////////////////////////
-double ArtificialNeuralNetwork::getOutput(int index){
+double ANN::getOutput(int index){
 	
-	return m_neuronValues[m_numberOfLayers-1][index];
+	return X[nbLayers-1][index];
 }
 ////////////////////////////////////////////
-double ArtificialNeuralNetwork::getMeanSquareError(double* target){
+double ANN::getMeanSquareError(double* target){
 
 		double mse=0;
-		int i;
-		//#pragma omp  parallel for   private(i) reduction(+: mse) 
-		//add all the output
-		for( i = 0 ; i < m_numOfNeurons[m_numberOfLayers-1] ; i++){
-			mse = mse + (target[i]-m_neuronValues[m_numberOfLayers-1][i])*(target[i]-m_neuronValues[m_numberOfLayers-1][i]);
+		for( int i = 0 ; i < neuronPerLayer[nbLayers-1] ; i++){
+			mse = mse + (target[i]-X[nbLayers-1][i])*(target[i]-X[nbLayers-1][i]);
 		}
 		
 		return mse;
 	
 }
 ////////////////////////////////////////////
-double ArtificialNeuralNetwork::sigmoid(double inValue){
-	
-	return 1.0/(1+exp(-inValue));
 
-}
-////////////////////////////////////////////
-double ArtificialNeuralNetwork::step(double inValue){
-	
-	if(inValue>=0){return 1;}else{return 0;}
-}
-////////////////////////////////////////////
-void ArtificialNeuralNetwork::loadWights(double *weightVector){
+void ANN::loadW(double *weightVector){
 
-	for(int layer = 1; layer < m_numberOfLayers ; ++layer){ 
-		for(int neuron = 0 ; neuron < m_numOfNeurons[layer] ; neuron++){
-			for(int preNeuron = 0 ; preNeuron < m_numOfNeurons[layer-1] ; preNeuron++){
-				m_neuronWeights[layer][neuron][preNeuron] = *(weightVector++); 
+	for(int layer = 1; layer < nbLayers ; ++layer){ 
+		for(int neuron = 0 ; neuron < neuronPerLayer[layer] ; neuron++){
+			for(int preNeuron = 0 ; preNeuron < neuronPerLayer[layer-1] ; preNeuron++){
+				W[layer][neuron][preNeuron] = *(weightVector++); 
 			}
 			//load bias
-			m_neuronWeights[layer][neuron][m_numOfNeurons[layer-1]] = *(weightVector++);
+			W[layer][neuron][neuronPerLayer[layer-1]] = *(weightVector++);
 		}
 	}
 }
 ////////////////////////////////////////////
+
+void ANN::print(){
+Rprintf("Best chromosome->");
+	for(int i = 1 ; i < nbLayers ; i++){  
+		for(int j = 0 ; j < neuronPerLayer[i] ; j++){
+			for(int k = 0 ; k < neuronPerLayer[i-1]+1 ; k++){
+			Rprintf("%4.2f/",W[i][j][k]);
+			}
+		}	
+	}
+	Rprintf("\n");
+
+
+}
+
+
+
+
+
+
+
+
+
+
 
 #endif
 
